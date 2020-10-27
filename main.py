@@ -1,16 +1,16 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+import random
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+def kasumiEncodingBlock(input, key):
+    keyBytes = input.to_bytes(16, 'big')
+    inputBytes = input.to_bytes(8, 'big')
+    inputR = inputBytes[:4]
+    inputL = inputBytes[4:]
+    print(inputR)
+    print(inputL)
 
 
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    key = 116656439549747520770026372207237495529
+    input = 12574838010064957341
+    kasumiEncodingBlock(input, key)
