@@ -1,10 +1,18 @@
 # decalage vers la gauche de s bits avec les s bits de gauche reviennent à droite
+import re
+import sys
+
+
 def _circular_shift(x, s):
     return ((x << s) & 0xFFFF) | (x >> (16 - s))
 
 
 def _mod(x):
     return ((x - 1) % 8) + 1
+
+
+def bytes_xor(a, b) :
+    return bytes(x ^ y for x, y in zip(a, b))
 
 
 S7 = (
@@ -168,20 +176,164 @@ class Kasumi:
         return (left << 32) | right
 
 
+def chiffrement_ECB(kasumi, message):
+    messageChiffre = "".encode()
+    message = message.encode()
+
+    # Separate message en partie de 64 bits (8 octets)
+    parts = [message[i:i + 8] for i in range(0, len(message), 8)]
+
+    for part in parts:
+        messageChiffre += kasumi.encoding(int.from_bytes(part, sys.byteorder)).to_bytes(8, sys.byteorder)
+
+    return messageChiffre
+
+
+def dechiffrement_ECB(kasumi, message):
+    messageDechiffre = "".encode()
+
+    # Separate message en partie de 64 bits (8 octets)
+    parts = [message[i:i + 8] for i in range(0, len(message), 8)]
+
+    for part in parts:
+        messageDechiffre += kasumi.decoding(int.from_bytes(part, sys.byteorder)).to_bytes(8, sys.byteorder)
+
+    return messageDechiffre.decode()
+
+
+def chiffrement_CBC(kasumi, message):
+    vecteurInit = 11709375263224690697
+    vecteurInit = vecteurInit.to_bytes(8, sys.byteorder)
+
+    messageChiffre = "".encode()
+    message = message.encode()
+
+    # Separate message en partie de 64 bits (8 octets)
+    parts = [message[i:i + 8] for i in range(0, len(message), 8)]
+
+    vecteurUsed = False
+
+    previousPart = parts[0]
+    for part in parts:
+        if not vecteurUsed:
+            part = bytes_xor(vecteurInit, part)
+            vecteurUsed = True
+        else:
+            part = bytes_xor(previousPart, part)
+
+        part = kasumi.encoding(int.from_bytes(part, sys.byteorder)).to_bytes(8, sys.byteorder)
+        messageChiffre += part
+
+        previousPart = part
+
+    return messageChiffre
+
+
+def dechiffrement_CBC(kasumi, message):
+    vecteurInit = 11709375263224690697
+    vecteurInit = vecteurInit.to_bytes(8, sys.byteorder)
+
+    messageDechiffre = "".encode()
+
+    # Separate message en partie de 64 bits (8 octets)
+    parts = [message[i:i + 8] for i in range(0, len(message), 8)]
+
+    vecteurUsed = False
+
+    previousPart = parts[0]
+    for part in parts:
+        decode = kasumi.decoding(int.from_bytes(part, sys.byteorder)).to_bytes(8, sys.byteorder)
+
+        if not vecteurUsed:
+            decode = bytes_xor(vecteurInit, decode)
+            vecteurUsed = True
+        else:
+            decode = bytes_xor(previousPart, decode)
+
+        messageDechiffre += decode
+
+        previousPart = part
+
+    # divise en blocks de 64
+    return messageDechiffre.decode()
+
+def chiffrement_PCBC(kasumi, message):
+    vecteurInit = 11709375263224690697
+    vecteurInit = vecteurInit.to_bytes(8, sys.byteorder)
+
+    messageChiffre = "".encode()
+    message = message.encode()
+
+    # Separate message en partie de 64 bits (8 octets)
+    parts = [message[i:i + 8] for i in range(0, len(message), 8)]
+
+    vecteurUsed = False
+
+    newVector = parts[0]
+    for part in parts:
+        encode = "".encode()
+        if not vecteurUsed:
+            encode = bytes_xor(vecteurInit, part)
+            vecteurUsed = True
+        else:
+            encode = bytes_xor(newVector, part)
+
+        encode = kasumi.encoding(int.from_bytes(encode, sys.byteorder)).to_bytes(8, sys.byteorder)
+        messageChiffre += encode
+
+        newVector = bytes_xor(encode, part)
+
+    return messageChiffre
+
+def dechiffrement_PCBC(kasumi, message):
+    vecteurInit = 11709375263224690697
+    vecteurInit = vecteurInit.to_bytes(8, sys.byteorder)
+
+    messageDechiffre = "".encode()
+
+    # Separate message en partie de 64 bits (8 octets)
+    parts = [message[i:i + 8] for i in range(0, len(message), 8)]
+
+    vecteurUsed = False
+
+    newVector = parts[0]
+    for part in parts:
+        decode = kasumi.decoding(int.from_bytes(part, sys.byteorder)).to_bytes(8, sys.byteorder)
+
+        if not vecteurUsed:
+            decode = bytes_xor(vecteurInit, decode)
+            vecteurUsed = True
+        else:
+            decode = bytes_xor(newVector, decode)
+
+        messageDechiffre += decode
+
+        newVector = bytes_xor(decode, part)
+
+    # divise en blocks de 64
+    return messageDechiffre.decode()
+
+def openFile(path):
+    file = open(path, 'r')
+    return file
+
+def saveFileEncrypt(path, message):
+    file = open(path, 'wb')
+    file.write(message)
+
+def saveFileDecrypt(path, message):
+    file = open(path, 'w')
+    file.write(message)
+
 if __name__ == '__main__':
     key = 0x9900aabbccddeeff1122334455667788
-    text = 0xfedcba0987654321
-
     my_kasumi = Kasumi()
     my_kasumi.set_key(key)
+    file = openFile("message")
+    text = file.read()
 
-    encrypted = my_kasumi.encoding(text)
-    print ('encrypted', hex(encrypted))
+    encrypted = chiffrement_PCBC(my_kasumi, text)
+    saveFileEncrypt("message.encrypt", encrypted)
 
-    for i in range(99):  # for testing
-        encrypted = my_kasumi.encoding(encrypted)
-    for i in range(99):
-        encrypted = my_kasumi.decoding(encrypted)
-
-    decrypted = my_kasumi.decoding(encrypted)
-    print('decrypted', hex(decrypted))
+    decrypted = dechiffrement_PCBC(my_kasumi, encrypted)
+    saveFileDecrypt("message.decrypt", decrypted)
