@@ -72,6 +72,7 @@ class Kasumi:
         self.key_KI1 = [None] * 9
         self.key_KI2 = [None] * 9
         self.key_KI3 = [None] * 9
+        self.S = [None] * 255
 
     def set_key(self, master_key):
         key = [None] * 9
@@ -93,6 +94,15 @@ class Kasumi:
             self.key_KI1[i] = key_prime[_mod(i + 4)]
             self.key_KI2[i] = key_prime[_mod(i + 3)]
             self.key_KI3[i] = key_prime[_mod(i + 7)]
+
+        for i in range(0, 255):
+            self.S[i] = i
+
+        for i in range(0, 255):
+            j = (j + self.S[i] + master_key[i % len(master_key)]) % 256
+            self.S[i], self.S[j] = self.S[j], self.S[i]
+
+
 
     def FI_fun(self, round_key_KI, input):
 
