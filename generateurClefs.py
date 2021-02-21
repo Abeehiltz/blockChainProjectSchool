@@ -1,35 +1,8 @@
 import random
 
 
-def prime_factors(n):
-    i = 2
-    factors = []
-    while i * i <= n:
-        if n % i:
-            i += 1
-        else:
-            n //= i
-            factors.append(i)
-    if n > 1:
-        factors.append(n)
-    return factors
 
-
-def exponentationRapide(num, exp, modulo):
-    t = 1
-    while (exp > 0):
-
-        # for cases where exponent
-        # is not an even value
-        if (exp % 2 != 0):
-            t = (t * num) % modulo
-
-        num = pow(num, 2, modulo)
-        exp = int(exp / 2)
-    return t % modulo
-
-
-def is_probable_prime(n, k=5):
+def testRabinMiller(n, k=5):
     # Test nombre inférieur à 6 rapidement
     if n < 6:
         return [False, False, True, True, False, True][n]
@@ -95,9 +68,9 @@ def genererNombrePremierWorker(keysize=512, flag=None, returnList:list=[]):
     # Retourner un nombre premiers de taille keysize bits
     while not bool(flag.value):
         num = random.getrandbits(keysize)
-        if is_probable_prime(num):
+        if testRabinMiller(num):
             q = (num - 1) // 2
-            if is_probable_prime(q):
+            if testRabinMiller(q):
                 flag.value=1
                 returnList.append(num)
 
@@ -123,4 +96,5 @@ def saveFile(path, nombrePremier):
     file.close()
 
 if __name__ == '__main__':
-    print("test")
+    key = genererNombrePremier(512)
+    saveFile("nombrePremiers/nombrePremier512bits_bis", key)
